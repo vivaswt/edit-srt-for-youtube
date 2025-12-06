@@ -1,4 +1,5 @@
 import 'package:edit_srt_for_youtube/screen/download.dart';
+import 'package:edit_srt_for_youtube/screen/edit_subtitles.dart';
 import 'package:flutter/material.dart';
 
 class Menu extends StatelessWidget {
@@ -19,7 +20,14 @@ class Menu extends StatelessWidget {
             },
             child: const Text('Download Video & Subtitles'),
           ),
-          ElevatedButton(onPressed: () {}, child: const Text('Edit Subtitles')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => EditFirstScreen()),
+              );
+            },
+            child: const Text('Edit Subtitles'),
+          ),
           ElevatedButton(
             onPressed: () {},
             child: const Text('Translate Subtitles'),

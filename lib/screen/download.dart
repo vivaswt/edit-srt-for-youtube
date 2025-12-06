@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:edit_srt_for_youtube/extension/object.dart';
 import 'package:edit_srt_for_youtube/api/youtube.dart';
-import 'package:edit_srt_for_youtube/model/sentence_segment.dart';
+import 'package:edit_srt_for_youtube/model/sentence_segment.dart' as ssg;
 import 'package:edit_srt_for_youtube/model/srt.dart';
 import 'package:edit_srt_for_youtube/model/srv2_parser.dart';
 import 'package:edit_srt_for_youtube/model/word.dart';
@@ -24,7 +24,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
   DownloadState state = DownloadState.yet;
   String videoFileName = '';
   String srtFileName = '';
-  String wordsFileName = '';
+  String segmentFileName = '';
   String errorMessage = '';
 
   Future<void> startDownload() async {
@@ -33,7 +33,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       progress = 0;
       videoFileName = '';
       srtFileName = '';
-      wordsFileName = '';
+      segmentFileName = '';
       errorMessage = '';
     });
 
@@ -91,12 +91,34 @@ class _DownloadScreenState extends State<DownloadScreen> {
         return;
     }
 
-    final wordsFile = await createWordsFile(subtitleFileName, baseName);
+    final segmentFile = await createSentenceSegmentFile(
+      subtitleFileName,
+      baseName,
+    );
     setState(() {
       progress = 0;
-      wordsFileName = wordsFile.path;
+      segmentFileName = segmentFile.path;
       state = DownloadState.done;
     });
+  }
+
+  Future<File> createSentenceSegmentFile(
+    String subtitleFileName,
+    String baseName,
+  ) async {
+    List<ssg.SentenceSegment> splitLongSentence(segment) =>
+        ssg.splitLongSegment(segment, minTotalWords: 15, minPartWords: 5);
+
+    final contents = await File(subtitleFileName).readAsString();
+    final segments = contents
+        .pipe(parseSrv2)
+        .pipe(ssg.splitBySentence)
+        .expand(splitLongSentence)
+        .toList();
+
+    final fileName = p.join(p.dirname(subtitleFileName), '$baseName.ssg');
+
+    return ssg.saveAsJson(segments, fileName).then((_) => File(fileName));
   }
 
   Future<File> createWordsFile(String subtitleFileName, String baseName) async {
@@ -113,13 +135,13 @@ class _DownloadScreenState extends State<DownloadScreen> {
     required String subtitleFileName,
     required String baseName,
   }) async {
-    List<SentenceSegment> splitLongSentence(segment) =>
-        splitLongSegment(segment, minTotalWords: 15, minPartWords: 5);
+    List<ssg.SentenceSegment> splitLongSentence(segment) =>
+        ssg.splitLongSegment(segment, minTotalWords: 15, minPartWords: 5);
 
     final contents = await File(subtitleFileName).readAsString();
     final srtLines = contents
         .pipe(parseSrv2)
-        .pipe(splitBySentence)
+        .pipe(ssg.splitBySentence)
         .expand(splitLongSentence)
         .toList()
         .pipe(segmentsToSrtRecords)
@@ -186,7 +208,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
             if (state != DownloadState.yet) ...[
               if (videoFileName.isNotEmpty) Text('Downloaded: $videoFileName'),
               if (srtFileName.isNotEmpty) Text('Downloaded: $srtFileName'),
-              if (wordsFileName.isNotEmpty) Text('Downloaded: $wordsFileName'),
+              if (segmentFileName.isNotEmpty)
+                Text('Downloaded: $segmentFileName'),
               if (errorMessage.isNotEmpty) Text('Error: $errorMessage'),
             ],
           ],
@@ -200,7 +223,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       state = DownloadState.yet;
       videoFileName = '';
       srtFileName = '';
-      wordsFileName = '';
+      segmentFileName = '';
       errorMessage = '';
     });
     getVideoTitle(value)
