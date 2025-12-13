@@ -158,6 +158,8 @@ Parser<String> digit = satisfy(
 Parser<String> noneOf(String s) =>
     satisfy((c) => !s.contains(c), expected: 'none of $s');
 
+Parser<A?> optional<A>(Parser<A?> p) => p.or(Parser.of(null));
+
 class ParserInput {
   final String _buffer;
   final int offset;

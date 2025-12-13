@@ -64,6 +64,31 @@ sealed class Either<L, R> {
       return Left(e.message);
     }
   }
+
+  static Future<Either<L, R1>> asyncDoNotation<L, R1>(
+    Future<R1> Function(R2 Function<R2>(Either<L, R2>) $) callback,
+  ) async {
+    U resolver<U>(Either<L, U> either) {
+      switch (either) {
+        case Left(value: final error):
+          throw _DoException(error);
+        case Right(value: final value):
+          return value;
+      }
+    }
+
+    try {
+      // Await the future returned by the callback
+      final resultValue = await callback(resolver);
+      return Either.of(resultValue);
+    } on _DoException catch (e) {
+      // If the resolver throws, catch it and return a Left
+      return Left(e.message);
+    } catch (e) {
+      // Catch any other unexpected errors during the async operation
+      return Left(e.toString() as L);
+    }
+  }
 }
 
 class Left<L, R> extends Either<L, R> {

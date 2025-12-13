@@ -55,7 +55,12 @@ final _parseTextLine = Parser.doNotation(($) {
   return txt;
 });
 
-final parseTextLines = many1(_parseTextLine);
+final parseTextLines = Parser.doNotation(($) {
+  final lines = $(many(_parseTextLine));
+  final lastLine = $(optional(many1(noneOf('\n'))))?.join();
+  if (lastLine != null) lines.add(lastLine);
+  return lines;
+});
 
 /// A parser for a single, complete SRT record block.
 /// An SRT block consists of an ID, a timestamp, text, and a blank line separator.
