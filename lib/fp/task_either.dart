@@ -69,6 +69,9 @@ class TaskEither<L, R> {
       ),
     ),
   );
+
+  factory TaskEither.fromEither(Either<L, R> either) =>
+      TaskEither(() async => either);
 }
 
 class _DoException<L> implements Exception {

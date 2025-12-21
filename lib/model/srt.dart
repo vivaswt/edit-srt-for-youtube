@@ -45,6 +45,14 @@ class SrtRecord {
     text,
     '',
   ];
+
+  SrtRecord copyWith({int? id, String? text, int? start, int? end}) =>
+      SrtRecord(
+        id: id ?? this.id,
+        text: text ?? this.text,
+        start: start ?? this.start,
+        end: end ?? this.end,
+      );
 }
 
 /// Converts a list of [SrtRecord]s into a list of strings ready to be written to a .srt file.

@@ -47,4 +47,16 @@ extension FpIterableExtensions<T> on Iterable<T> {
       break;
     }
   }
+
+  Iterable<List<T>> chunk(int size) sync* {
+    if (size <= 0) throw ArgumentError.value(size, 'size', 'must be positive');
+    final iterator = this.iterator;
+    while (iterator.moveNext()) {
+      final chunk = [iterator.current];
+      while (chunk.length < size && iterator.moveNext()) {
+        chunk.add(iterator.current);
+      }
+      yield chunk;
+    }
+  }
 }

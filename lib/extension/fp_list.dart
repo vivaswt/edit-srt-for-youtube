@@ -33,3 +33,7 @@ extension FpListExtensions<T> on List<T> {
     return [...pre, ...convert(sub), ...post];
   }
 }
+
+extension FpListOfListExtensions<T> on List<List<T>> {
+  List<T> flatten() => expand((ls) => ls).toList();
+}

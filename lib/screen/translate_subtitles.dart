@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:edit_srt_for_youtube/api/gemini_translate.dart';
+import 'package:edit_srt_for_youtube/api/gemini_translate_split.dart';
 import 'package:edit_srt_for_youtube/extension/fp_iterable.dart';
 import 'package:edit_srt_for_youtube/extension/widget_wrap.dart';
+import 'package:edit_srt_for_youtube/fp/task_either.dart';
 import 'package:edit_srt_for_youtube/model/srt.dart';
 import 'package:edit_srt_for_youtube/fp/either.dart';
 import 'package:edit_srt_for_youtube/others/srt_parser.dart';
@@ -59,28 +60,44 @@ class _TranslateScreenState extends State<TranslateScreen> {
     _stopwatch.reset();
     _stopwatch.start();
 
-    final Either<String, void> result = await Either.asyncDoNotation(($) async {
-      final srtText = await File(_fileName.value!).readAsString();
-      final srtRecords = $(parseSrt(srtText));
-      final srtLinesJp = await translateSrt(
-        srtRecords,
-        Platform.environment['GEMINI_API_KEY']!,
+    final TaskEither<Exception, File> translateTask = TaskEither.doNotation((
+      $,
+    ) async {
+      final srtText = await $(
+        TaskEither.tryCatch(
+          () => File(_fileName.value!).readAsString(),
+          (_) => Exception('Fail to read the file.'),
+        ),
       );
-      await File(
-        _srtJpFileName(_fileName.value!),
-      ).writeAsString(srtLinesJp.join('\n'));
 
-      final srtRecordsJp = $(parseSrt(srtLinesJp.join('\n')));
-      $(compareSrts(srtRecords, srtRecordsJp));
+      final srtRecords = await $(
+        TaskEither.fromEither(parseSrt(srtText).mapLeft(Exception.new)),
+      );
 
-      return;
+      final srtLinesJp = await $(
+        translateSrt(srtRecords, Platform.environment['GEMINI_API_KEY']!),
+      );
+
+      final outputString = srtRecordsToStrings(srtLinesJp.toList());
+
+      final outFile = await $(
+        TaskEither.tryCatch(
+          () => File(
+            _srtJpFileName(_fileName.value!),
+          ).writeAsString(outputString.join('\n')),
+          (_) => Exception('Fail to write the file.'),
+        ),
+      );
+
+      return outFile;
     });
 
-    _message.value = switch (result) {
-      Right(value: _) => 'Done',
-      Left(value: final message) => message,
-    };
-
+    switch (await translateTask.run()) {
+      case Right(:final value):
+        _message.value = 'The translating is complete. The file name is $value';
+      case Left(:final value):
+        _message.value = value.toString();
+    }
     _runState.value = RunState.done;
     _stopwatch.stop();
   }

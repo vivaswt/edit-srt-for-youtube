@@ -18,6 +18,8 @@ sealed class Either<L, R> {
   /// If this is a [Left], it passes the [Left] value through.
   Either<L, R2> map<R2>(R2 Function(R value) f);
 
+  Either<L2, R> mapLeft<L2>(L2 Function(L value) f);
+
   /// Enables writing sequential computations involving [Either] in a readable,
   /// imperative style, similar to do-notation in Haskell.
   ///
@@ -107,6 +109,9 @@ class Left<L, R> extends Either<L, R> {
 
   @override
   bool operator ==(Object other) => other is Left && value == other.value;
+
+  @override
+  Either<L2, R> mapLeft<L2>(L2 Function(L value) f) => Left(f(value));
 }
 
 class Right<L, R> extends Either<L, R> {
@@ -124,6 +129,9 @@ class Right<L, R> extends Either<L, R> {
 
   @override
   bool operator ==(Object other) => other is Right && value == other.value;
+
+  @override
+  Either<L2, R> mapLeft<L2>(L2 Function(L value) f) => Right(value);
 }
 
 class _DoException<M> implements Exception {
