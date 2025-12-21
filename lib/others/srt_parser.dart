@@ -1,6 +1,6 @@
 import 'package:edit_srt_for_youtube/extension/object.dart';
-import 'package:edit_srt_for_youtube/others/either.dart';
-import 'package:edit_srt_for_youtube/others/parser.dart';
+import 'package:edit_srt_for_youtube/fp/either.dart';
+import 'package:edit_srt_for_youtube/fp/parser.dart';
 import 'package:edit_srt_for_youtube/model/srt.dart';
 
 /// A parser that consumes a line containing only an integer.

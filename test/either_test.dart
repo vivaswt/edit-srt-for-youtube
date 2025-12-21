@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:edit_srt_for_youtube/others/either.dart';
+import 'package:edit_srt_for_youtube/fp/either.dart';
 
 void main() {
   group('normal', () {

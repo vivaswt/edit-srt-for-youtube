@@ -5,7 +5,7 @@ import 'package:edit_srt_for_youtube/api/gemini_translate.dart';
 import 'package:edit_srt_for_youtube/extension/fp_iterable.dart';
 import 'package:edit_srt_for_youtube/extension/widget_wrap.dart';
 import 'package:edit_srt_for_youtube/model/srt.dart';
-import 'package:edit_srt_for_youtube/others/either.dart';
+import 'package:edit_srt_for_youtube/fp/either.dart';
 import 'package:edit_srt_for_youtube/others/srt_parser.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';

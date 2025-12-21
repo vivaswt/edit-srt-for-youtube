@@ -1,5 +1,5 @@
 import 'package:edit_srt_for_youtube/extension/object.dart';
-import 'package:edit_srt_for_youtube/others/either.dart';
+import 'package:edit_srt_for_youtube/fp/either.dart';
 
 typedef ParserErrorMessage = String;
 

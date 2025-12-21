@@ -6,7 +6,7 @@ import 'package:edit_srt_for_youtube/extension/widget_wrap.dart';
 import 'package:edit_srt_for_youtube/model/sentence_segment.dart';
 import 'package:edit_srt_for_youtube/model/srt.dart';
 import 'package:edit_srt_for_youtube/model/word.dart' as wd;
-import 'package:edit_srt_for_youtube/others/either.dart';
+import 'package:edit_srt_for_youtube/fp/either.dart';
 import 'package:edit_srt_for_youtube/others/srt_parser.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
