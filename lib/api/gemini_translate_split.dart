@@ -14,7 +14,7 @@ TaskEither<Exception, Iterable<SrtRecord>> translateSrt(
   String apiKey,
 ) => srts
     .map((srt) => srt.text)
-    .chunk(30)
+    .chunk(200)
     .map((lines) => translateTextLines(lines, apiKey))
     .pipe(TaskEither.sequence)
     .map((ss) => ss.flatten())

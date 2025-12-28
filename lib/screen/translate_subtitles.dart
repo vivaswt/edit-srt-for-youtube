@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:edit_srt_for_youtube/api/gemini_translate_split.dart';
+import 'package:edit_srt_for_youtube/api/cloud_translation.dart' as cloud;
+import 'package:edit_srt_for_youtube/api/gemini_translate_split.dart' as gemini;
 import 'package:edit_srt_for_youtube/extension/fp_iterable.dart';
 import 'package:edit_srt_for_youtube/extension/widget_wrap.dart';
 import 'package:edit_srt_for_youtube/fp/task_either.dart';
@@ -26,6 +27,9 @@ class _TranslateScreenState extends State<TranslateScreen> {
   final ValueNotifier<RunState> _runState = ValueNotifier(RunState.yet);
   final ListenableStopwatch _stopwatch = ListenableStopwatch();
   final ValueNotifier<String> _message = ValueNotifier('');
+  final ValueNotifier<TranslationMethod> _method = ValueNotifier(
+    TranslationMethod.gemini,
+  );
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -33,6 +37,10 @@ class _TranslateScreenState extends State<TranslateScreen> {
     body:
         [
               FileSelection(fileName: _fileName, runState: _runState),
+              TranslationMethodSelection(
+                inabled: _runState.value == RunState.yet,
+                method: _method,
+              ),
               StartButton(
                 runState: _runState,
                 fileName: _fileName,
@@ -74,9 +82,16 @@ class _TranslateScreenState extends State<TranslateScreen> {
         TaskEither.fromEither(parseSrt(srtText).mapLeft(Exception.new)),
       );
 
-      final srtLinesJp = await $(
-        translateSrt(srtRecords, Platform.environment['GEMINI_API_KEY']!),
-      );
+      final srtLinesJp = await $(switch (_method.value) {
+        TranslationMethod.gemini => gemini.translateSrt(
+          srtRecords,
+          Platform.environment['GEMINI_API_KEY']!,
+        ),
+        TranslationMethod.googleCloud => cloud.translateSrt(
+          srtRecords,
+          Platform.environment['TTS_API_KEY']!,
+        ),
+      });
 
       final outputString = srtRecordsToStrings(srtLinesJp.toList());
 
@@ -318,4 +333,43 @@ class ListenableStopwatch extends ChangeNotifier {
     _timer?.cancel();
     super.dispose();
   }
+}
+
+enum TranslationMethod { gemini, googleCloud }
+
+class TranslationMethodSelection extends StatelessWidget {
+  final ValueNotifier<TranslationMethod> _method;
+  final bool _inabled;
+
+  const TranslationMethodSelection({
+    super.key,
+    required bool inabled,
+    required ValueNotifier<TranslationMethod> method,
+  }) : _inabled = inabled,
+       _method = method;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder(
+    valueListenable: _method,
+    builder: (context, methodValue, child) {
+      return SegmentedButton<TranslationMethod>(
+        segments: const <ButtonSegment<TranslationMethod>>[
+          ButtonSegment(
+            value: TranslationMethod.gemini,
+            label: Text('Gemini'),
+            icon: Icon(Icons.auto_awesome),
+          ),
+          ButtonSegment(
+            value: TranslationMethod.googleCloud,
+            label: Text('Google Cloud'),
+            icon: Icon(Icons.cloud),
+          ),
+        ],
+        selected: {methodValue},
+        onSelectionChanged: _inabled
+            ? (value) => _method.value = value.first
+            : null,
+      );
+    },
+  );
 }

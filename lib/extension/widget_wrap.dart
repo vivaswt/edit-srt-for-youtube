@@ -323,4 +323,16 @@ extension WrapWithExtension on Widget {
     statesController: statesController,
     child: this,
   );
+
+  /// Wraps the widget in an [RadioGroup].
+  Widget wrapWithRadioGroup<T>({
+    Key? key,
+    T? groupValue,
+    required ValueChanged<T?> onChanged,
+  }) => RadioGroup(
+    key: key,
+    groupValue: groupValue,
+    onChanged: onChanged,
+    child: this,
+  );
 }
