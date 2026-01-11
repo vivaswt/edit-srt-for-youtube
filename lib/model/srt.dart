@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:edit_srt_for_youtube/extension/fp_iterable.dart';
-import 'package:edit_srt_for_youtube/extension/object.dart';
 import 'package:edit_srt_for_youtube/model/sentence_segment.dart';
 import 'package:edit_srt_for_youtube/model/word.dart';
 import 'package:edit_srt_for_youtube/fp/either.dart';

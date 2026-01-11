@@ -4,17 +4,18 @@ import 'package:deep_pick/deep_pick.dart';
 import 'package:edit_srt_for_youtube/extension/fp_iterable.dart';
 import 'package:edit_srt_for_youtube/extension/fp_list.dart';
 import 'package:edit_srt_for_youtube/extension/object.dart';
-import 'package:edit_srt_for_youtube/fp/either.dart';
 import 'package:edit_srt_for_youtube/fp/task_either.dart';
 import 'package:edit_srt_for_youtube/model/srt.dart';
 import 'package:http/http.dart' as http;
+
+const _chunkSize = 100;
 
 TaskEither<Exception, Iterable<SrtRecord>> translateSrt(
   Iterable<SrtRecord> srts,
   String apiKey,
 ) => srts
     .map((srt) => srt.text)
-    .chunk(200)
+    .chunk(_chunkSize)
     .map((lines) => translateTextLines(lines, apiKey))
     .pipe(TaskEither.sequence)
     .map((ss) => ss.flatten())

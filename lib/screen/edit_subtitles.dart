@@ -234,7 +234,7 @@ class StateMachine {
 
   void dispatch(Action action) {
     switch (action) {
-      case SetFileName(fileName: final fileName):
+      case SetFileName(fileName: _):
         state = LoadingState();
       case TransitNextScreen():
         state = InitalState();

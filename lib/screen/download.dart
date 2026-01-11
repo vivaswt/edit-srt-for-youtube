@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:edit_srt_for_youtube/extension/object.dart';
 import 'package:edit_srt_for_youtube/api/youtube.dart';
+import 'package:edit_srt_for_youtube/extension/widget_wrap.dart';
 import 'package:edit_srt_for_youtube/model/sentence_segment.dart' as ssg;
 import 'package:edit_srt_for_youtube/model/srt.dart';
 import 'package:edit_srt_for_youtube/model/srv2_parser.dart';
@@ -26,6 +27,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
   String srtFileName = '';
   String segmentFileName = '';
   String errorMessage = '';
+  bool skipDownloadingVideo = false;
 
   Future<void> startDownload() async {
     setState(() {
@@ -39,27 +41,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
 
     final baseName = sanitizeFileName(videoTitle);
 
-    final videoResult = await downloadVideo(
-      url,
-      folder: r'G:\マイドライブ\Movie',
-      baseName: baseName,
-      onProgress: handleProgress,
-    );
-
-    switch (videoResult) {
-      case DownloadSuccess(file: final file):
-        setState(() {
-          progress = 0;
-          videoFileName = file.path;
-        });
-      case DownloadFailure(message: final message):
-        setState(() {
-          progress = 0;
-          state = DownloadState.done;
-          errorMessage = message;
-        });
-        return;
-    }
+    await handleDownloadingVideo(baseName);
 
     final subtitleResult = await getSubTitleContents(
       url,
@@ -100,6 +82,32 @@ class _DownloadScreenState extends State<DownloadScreen> {
       segmentFileName = segmentFile.path;
       state = DownloadState.done;
     });
+  }
+
+  Future<void> handleDownloadingVideo(String baseName) async {
+    if (skipDownloadingVideo) return;
+
+    final videoResult = await downloadVideo(
+      url,
+      folder: r'G:\マイドライブ\Movie',
+      baseName: baseName,
+      onProgress: handleProgress,
+    );
+
+    switch (videoResult) {
+      case DownloadSuccess(file: final file):
+        setState(() {
+          progress = 0;
+          videoFileName = file.path;
+        });
+      case DownloadFailure(message: final message):
+        setState(() {
+          progress = 0;
+          state = DownloadState.done;
+          errorMessage = message;
+        });
+        return;
+    }
   }
 
   Future<File> createSentenceSegmentFile(
@@ -192,6 +200,15 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     : null,
                 child: const Text('Download'),
               ),
+              SkipDownloadingVideoCheck(
+                isEnabled: state != DownloadState.downloading,
+                handleChange: (value) {
+                  setState(() {
+                    skipDownloadingVideo = value!;
+                  });
+                },
+                value: skipDownloadingVideo,
+              ),
             ] else
               const Text('No video is found'),
 
@@ -242,3 +259,25 @@ class _DownloadScreenState extends State<DownloadScreen> {
 }
 
 enum DownloadState { yet, downloading, done }
+
+class SkipDownloadingVideoCheck extends StatelessWidget {
+  final void Function(bool?) _handleChange;
+  final bool _isEnabled;
+  final bool _value;
+
+  const SkipDownloadingVideoCheck({
+    super.key,
+    required handleChange,
+    required isEnabled,
+    required value,
+  }) : _handleChange = handleChange,
+       _isEnabled = isEnabled,
+       _value = value;
+
+  @override
+  Widget build(BuildContext context) => CheckboxListTile(
+    title: const Text('Skip downloading video'),
+    value: _value,
+    onChanged: _isEnabled ? _handleChange : null,
+  ).wrapWithSizedBox(width: 280);
+}
