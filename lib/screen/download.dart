@@ -4,6 +4,7 @@ import 'package:edit_srt_for_youtube/extension/object.dart';
 import 'package:edit_srt_for_youtube/api/youtube.dart';
 import 'package:edit_srt_for_youtube/extension/widget_wrap.dart';
 import 'package:edit_srt_for_youtube/model/sentence_segment.dart' as ssg;
+import 'package:edit_srt_for_youtube/model/setting_service.dart';
 import 'package:edit_srt_for_youtube/model/srt.dart';
 import 'package:edit_srt_for_youtube/model/srv2_parser.dart';
 import 'package:edit_srt_for_youtube/model/word.dart';
@@ -43,10 +44,12 @@ class _DownloadScreenState extends State<DownloadScreen> {
 
     await handleDownloadingVideo(baseName);
 
+    final saveFolderPath = await SettingsService().getSaveFolderPath();
+
     final subtitleResult = await getSubTitleContents(
       url,
       format: 'srv2',
-      folder: r'G:\マイドライブ\Movie',
+      folder: saveFolderPath,
       baseName: 'subtitles',
       onProgress: handleProgress,
     );
@@ -86,10 +89,11 @@ class _DownloadScreenState extends State<DownloadScreen> {
 
   Future<void> handleDownloadingVideo(String baseName) async {
     if (skipDownloadingVideo) return;
+    final saveFolderPath = await SettingsService().getSaveFolderPath();
 
     final videoResult = await downloadVideo(
       url,
-      folder: r'G:\マイドライブ\Movie',
+      folder: saveFolderPath,
       baseName: baseName,
       onProgress: handleProgress,
     );

@@ -1,5 +1,6 @@
 import 'package:edit_srt_for_youtube/screen/download.dart';
 import 'package:edit_srt_for_youtube/screen/edit_subtitles.dart';
+import 'package:edit_srt_for_youtube/screen/setting.dart';
 import 'package:edit_srt_for_youtube/screen/translate_subtitles.dart';
 import 'package:flutter/material.dart';
 
@@ -8,7 +9,19 @@ class Menu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Menu')),
+    appBar: AppBar(
+      title: const Text('Menu'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const SettingScreen()),
+            );
+          },
+        ),
+      ],
+    ),
     body: Center(
       child: Column(
         spacing: 16,

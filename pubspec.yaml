@@ -13,6 +13,7 @@ dependencies:
     sdk: flutter
   http: ^1.6.0
   path: ^1.9.1
+  shared_preferences: ^2.5.4
   youtube_explode_dart: ^3.0.5
 
 dev_dependencies:
