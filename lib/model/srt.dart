@@ -21,7 +21,10 @@ class SrtRecord {
 
   /// Creates an SrtRecord from a SentenceSegment.
   factory SrtRecord.fromSentenceSegment(int id, SentenceSegment segment) {
-    final text = segment.words.map((word) => word.text).join(' ');
+    final text = segment.words
+        .map((word) => word.text)
+        .where((text) => text != '[music]')
+        .join(' ');
     return SrtRecord(
       id: id,
       text: text,
