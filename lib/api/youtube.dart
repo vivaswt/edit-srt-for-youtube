@@ -65,7 +65,7 @@ Future<DownloadResult> downloadVideo(
     }
   }
 
-  const formatOption = 'bv*[vcodec=avc1]+ba[acodec=mp4a]/b[vcodec=avc1]/best';
+  const formatOption = 'bv*[vcodec^=avc1]+ba[acodec^=mp4a]';
   final arguments = [
     '--encoding',
     'utf-8',
