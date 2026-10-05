@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:edit_srt_for_youtube/fp/either.dart';
 import 'package:path/path.dart' as path_lib;
 
 import 'package:edit_srt_for_youtube/extension/object.dart';
@@ -12,6 +13,18 @@ Future<String> getVideoTitle(String videoUrl) async {
     return video.title;
   } catch (e) {
     throw Exception('Error getting video title: $e');
+  } finally {
+    yt.close();
+  }
+}
+
+Future<Either<String, Video>> getVideoInfo(String videoUrl) async {
+  final yt = YoutubeExplode();
+  try {
+    final video = await yt.videos.get(videoUrl);
+    return Right(video);
+  } catch (e) {
+    return Left(e.toString());
   } finally {
     yt.close();
   }

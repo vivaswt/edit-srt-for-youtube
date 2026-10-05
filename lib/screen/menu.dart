@@ -1,4 +1,5 @@
 import 'package:edit_srt_for_youtube/screen/download.dart';
+import 'package:edit_srt_for_youtube/screen/download_video.dart';
 import 'package:edit_srt_for_youtube/screen/edit_subtitles.dart';
 import 'package:edit_srt_for_youtube/screen/setting.dart';
 import 'package:edit_srt_for_youtube/screen/translate_subtitles.dart';
@@ -26,6 +27,16 @@ class Menu extends StatelessWidget {
       child: Column(
         spacing: 16,
         children: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const DownloadVideoScreen(),
+                ),
+              );
+            },
+            child: const Text('Download Video Only'),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).push(
