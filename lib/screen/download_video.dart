@@ -22,12 +22,20 @@ class _DownloadVideoScreenState extends State<DownloadVideoScreen> {
         child: ListenableBuilder(
           listenable: _controller,
           builder: (context, _) => Column(
+            spacing: 8,
             children: [
               YouTubeUrlTextField(
                 onChanged: (v) => _controller.dispatch(VideoUrlChanged(v)),
                 enabled: _controller.model.phase != ViewPhase.fetchingVideoInfo,
               ),
-              Text(_controller.model.title),
+              YouTubeVideoInfo(
+                thumbnailUrl: _controller.model.thumbnailUrl,
+                title: _controller.model.title,
+              ),
+              DownloadButton(
+                enabled: _controller.model.phase == ViewPhase.readyToDownload,
+                onPressed: () => _controller.dispatch(StartDownload()),
+              ),
               Text(_controller.model.message),
             ],
           ),
@@ -37,6 +45,7 @@ class _DownloadVideoScreenState extends State<DownloadVideoScreen> {
   );
 }
 
+// --- Widgets ---
 class YouTubeUrlTextField extends StatelessWidget {
   final void Function(String) onChanged;
   final bool enabled;
@@ -57,16 +66,71 @@ class YouTubeUrlTextField extends StatelessWidget {
   }
 }
 
+class YouTubeVideoInfo extends StatelessWidget {
+  final String title;
+  final String thumbnailUrl;
+
+  const YouTubeVideoInfo({
+    super.key,
+    required this.title,
+    required this.thumbnailUrl,
+  });
+
+  @override
+  Widget build(BuildContext context) => Row(
+    spacing: 8,
+    children: [
+      YouTubeThumbnail(url: thumbnailUrl),
+      Text(title),
+    ],
+  );
+}
+
+class YouTubeThumbnail extends StatelessWidget {
+  final String url;
+
+  const YouTubeThumbnail({super.key, required this.url});
+
+  @override
+  Widget build(BuildContext context) => url.isNotEmpty
+      ? SizedBox(width: 200, child: Image(image: NetworkImage(url)))
+      : SizedBox.shrink();
+}
+
+class DownloadButton extends StatelessWidget {
+  const DownloadButton({
+    super.key,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final bool enabled;
+  final void Function() onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: enabled ? onPressed : null,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [Icon(Icons.download), const Text('Download')],
+      ),
+    );
+  }
+}
+
 // --- Model ---
 class Model {
   final ViewPhase phase;
   final String videoUrl;
+  final String thumbnailUrl;
   final String title;
   final String message;
 
   Model({
     required this.phase,
     required this.videoUrl,
+    required this.thumbnailUrl,
     required this.title,
     required this.message,
   });
@@ -74,11 +138,13 @@ class Model {
   Model copyWith({
     ViewPhase? phase,
     String? videoUrl,
+    String? thumbnailUrl,
     String? title,
     String? message,
   }) => Model(
     phase: phase ?? this.phase,
     videoUrl: videoUrl ?? this.videoUrl,
+    thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
     title: title ?? this.title,
     message: message ?? this.message,
   );
@@ -150,12 +216,15 @@ UpdateResult update(Model model, ViewEvent event) {
           final newModel = model.copyWith(
             phase: ViewPhase.readyToDownload,
             title: video.title,
+            thumbnailUrl: video.thumbnails.mediumResUrl,
           );
           return UpdateResult(newModel);
 
         case Left(value: _):
           final newModel = model.copyWith(
             phase: ViewPhase.errorOnFetchInfo,
+            title: '',
+            thumbnailUrl: '',
             message: 'Unknown video url',
           );
           return UpdateResult(newModel);
@@ -175,6 +244,7 @@ class ViewController extends ChangeNotifier {
   Model model = Model(
     phase: ViewPhase.waitingUrlInputed,
     videoUrl: '',
+    thumbnailUrl: '',
     title: '',
     message: '',
   );
