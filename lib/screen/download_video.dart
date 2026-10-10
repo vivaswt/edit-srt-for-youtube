@@ -15,6 +15,8 @@ class DownloadVideoScreen extends StatefulWidget {
 }
 
 class _DownloadVideoScreenState extends State<DownloadVideoScreen> {
+  static const String downloadTaskId = 'download_video';
+
   final _controller = ViewController(
     initialModel: Model(
       phase: ViewPhase.waitingUrlInputed,
@@ -46,16 +48,33 @@ class _DownloadVideoScreenState extends State<DownloadVideoScreen> {
             children: [
               YouTubeUrlTextField(
                 onChanged: (v) => _controller.dispatch(VideoUrlChanged(v)),
-                enabled: model.phase != ViewPhase.fetchingVideoInfo,
+                enabled:
+                    model.phase != ViewPhase.fetchingVideoInfo &&
+                    model.phase != ViewPhase.downloading,
               ),
+
               YouTubeVideoInfo(
                 thumbnailUrl: model.thumbnailUrl,
                 title: model.title,
               ),
-              DownloadButton(
-                enabled: model.phase == ViewPhase.readyToDownload,
-                onPressed: () => _controller.dispatch(StartDownload()),
-              ),
+
+              if (model.phase != ViewPhase.downloading)
+                DownloadButton(
+                  enabled: model.phase == ViewPhase.readyToDownload,
+                  onPressed: () => _controller.dispatch(
+                    StartDownload(taskId: downloadTaskId),
+                  ),
+                )
+              else
+                DownloadCancelButton(
+                  onPressed: () => _controller.dispatch(
+                    CancelDownload(taskId: downloadTaskId),
+                  ),
+                ),
+
+              if (model.phase == ViewPhase.downloading)
+                LinearProgressIndicator(value: model.downloadProgress),
+
               Text(model.message),
             ],
           ),
@@ -139,6 +158,21 @@ class DownloadButton extends StatelessWidget {
   }
 }
 
+class DownloadCancelButton extends StatelessWidget {
+  final void Function() onPressed;
+
+  const DownloadCancelButton({super.key, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => ElevatedButton(
+    onPressed: onPressed,
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [Icon(Icons.cancel), const Text('Cancel')],
+    ),
+  );
+}
+
 // --- Model ---
 class Model {
   final ViewPhase phase;
@@ -203,6 +237,9 @@ class VideoInfoFetched extends ViewEvent {
 }
 
 class StartDownload extends ViewEvent {
+  final String taskId;
+  StartDownload({required this.taskId});
+
   @override
   String toString() => 'StartDownload';
 }
@@ -232,8 +269,39 @@ class DownloadFailed extends ViewEvent {
   String toString() => 'DownloadFailed';
 }
 
+class CancelDownload extends ViewEvent {
+  final String taskId;
+  CancelDownload({required this.taskId});
+
+  @override
+  String toString() => 'CancelDownload';
+}
+
 //--- Effect ---
-typedef Effect = Stream<ViewEvent> Function();
+typedef Thunk<V> = V Function();
+
+sealed class Effect {}
+
+class NoEffect extends Effect {}
+
+class FutureEffect extends Effect {
+  final Thunk<Future<ViewEvent>> thunk;
+
+  FutureEffect(this.thunk);
+}
+
+class StreamEffect extends Effect {
+  final String taskId;
+  final Thunk<Stream<ViewEvent>> thunk;
+
+  StreamEffect(this.thunk, {required this.taskId});
+}
+
+class CancelEffect extends Effect {
+  final String taskId;
+
+  CancelEffect({required this.taskId});
+}
 
 //-- Update ---
 class UpdateResult {
@@ -243,30 +311,41 @@ class UpdateResult {
   UpdateResult(this.model, [this.effect]);
 }
 
-Effect fetchVideoInfoEffect(String videoUrl) => () async* {
-  final result = await getVideoInfo(videoUrl);
-  yield VideoInfoFetched(result);
-};
+FutureEffect fetchVideoInfoEffect(String videoUrl) =>
+    FutureEffect(() => getVideoInfo(videoUrl).then(VideoInfoFetched.new));
 
-Effect downloadVideoEffect(String videoTitle, String url) => () async* {
-  final baseName = sanitizeFileName(videoTitle);
-  final saveFolderPath = await SettingsService().getSaveFolderPath();
-  final videoResult = await downloadVideo(
-    url,
-    folder: saveFolderPath,
-    baseName: baseName,
-    onProgress: (p) async* {
-      yield DownloadProgressUpdated(p);
-    },
-  );
+StreamEffect downloadVideoEffect(
+  String videoTitle,
+  String url,
+  String taskId,
+) => StreamEffect(() {
+  final streamController = StreamController<ViewEvent>();
 
-  switch (videoResult) {
-    case DownloadSuccess(:final file):
-      yield DownloadCompleted(fileName: file.path);
-    case DownloadFailure(message: final message):
-      yield DownloadFailed(message);
+  void doTask() async {
+    final baseName = sanitizeFileName(videoTitle);
+    final saveFolderPath = await SettingsService().getSaveFolderPath();
+    final videoResult = await downloadVideo(
+      url,
+      folder: saveFolderPath,
+      baseName: baseName,
+      onProgress: (p) {
+        streamController.add(DownloadProgressUpdated(p));
+      },
+    );
+
+    switch (videoResult) {
+      case DownloadSuccess(:final file):
+        streamController.add(DownloadCompleted(fileName: file.path));
+      case DownloadFailure(message: final message):
+        streamController.add(DownloadFailed(message));
+    }
+
+    streamController.close();
   }
-};
+
+  streamController.onListen = doTask;
+  return streamController.stream;
+}, taskId: taskId);
 
 //--- Reducer ---
 typedef Reducer = UpdateResult Function(Model, ViewEvent);
@@ -308,7 +387,7 @@ Reducer update = (model, event) {
           return UpdateResult(newModel);
       }
 
-    case (ViewPhase.readyToDownload, StartDownload()):
+    case (ViewPhase.readyToDownload, StartDownload(:final taskId)):
       final newModel = model.copyWith(
         phase: ViewPhase.downloading,
         message: 'Downloading...',
@@ -316,8 +395,36 @@ Reducer update = (model, event) {
       );
       return UpdateResult(
         newModel,
-        downloadVideoEffect(model.title, model.videoUrl),
+        downloadVideoEffect(model.title, model.videoUrl, taskId),
       );
+
+    case (ViewPhase.downloading, DownloadProgressUpdated(:final progress)):
+      final newModel = model.copyWith(downloadProgress: progress);
+      return UpdateResult(newModel);
+
+    case (ViewPhase.downloading, DownloadCompleted(:final fileName)):
+      final newModel = model.copyWith(
+        phase: ViewPhase.readyToDownload,
+        downloadProgress: 0.0,
+        message: 'complete downloading. $fileName',
+      );
+      return UpdateResult(newModel);
+
+    case (ViewPhase.downloading, DownloadFailed(:final errorMessage)):
+      final newModel = model.copyWith(
+        phase: ViewPhase.readyToDownload,
+        downloadProgress: 0.0,
+        message: 'failed downloading. $errorMessage',
+      );
+      return UpdateResult(newModel);
+
+    case (ViewPhase.downloading, CancelDownload(:final taskId)):
+      final newModel = model.copyWith(
+        phase: ViewPhase.readyToDownload,
+        downloadProgress: 0.0,
+        message: 'download canceled.',
+      );
+      return UpdateResult(newModel, CancelEffect(taskId: taskId));
 
     case (_, _):
       return UpdateResult(
@@ -333,8 +440,7 @@ Reducer update = (model, event) {
 class ViewController {
   final ValueNotifier<Model> modelNotifier;
   final Reducer reducer;
-  final List<StreamSubscription> _subscriptions = [];
-
+  final Map<String, StreamSubscription> _subscriptions = {};
   ViewController({required Model initialModel, required this.reducer})
     : modelNotifier = ValueNotifier<Model>(initialModel);
 
@@ -342,18 +448,34 @@ class ViewController {
     final result = reducer(modelNotifier.value, event);
     modelNotifier.value = result.model;
 
-    if (result.effect case final effect?) {
-      final events = effect();
-      final subscription = events.listen(dispatch);
-      _subscriptions.add(subscription);
-      subscription.asFuture().whenComplete(() {
-        _subscriptions.remove(subscription);
-      });
+    _handleEffect(result.effect);
+  }
+
+  Future<void> _handleEffect(Effect? effect) async {
+    switch (effect) {
+      case FutureEffect(:final thunk):
+        thunk().then(dispatch);
+
+      case StreamEffect(:final thunk, taskId: final taskId):
+        final stream = thunk();
+        _subscriptions[taskId]?.cancel();
+        _subscriptions[taskId] = stream.listen(
+          dispatch,
+          onDone: () => _subscriptions.remove(taskId),
+        );
+
+      case CancelEffect(:final taskId):
+        _subscriptions[taskId]?.cancel();
+        _subscriptions.remove(taskId);
+
+      case NoEffect():
+      case null:
+      // NOP
     }
   }
 
   Future<void> dispose() async {
-    await Future.wait(_subscriptions.map((it) => it.cancel()));
+    await Future.wait(_subscriptions.values.map((s) => s.cancel()));
     _subscriptions.clear();
     modelNotifier.dispose();
   }
