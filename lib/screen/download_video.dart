@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:edit_srt_for_youtube/api/youtube.dart';
+import 'package:edit_srt_for_youtube/api/youtube.dart' as yt;
 import 'package:edit_srt_for_youtube/fp/either.dart';
 import 'package:edit_srt_for_youtube/model/setting_service.dart';
 import 'package:edit_srt_for_youtube/others/io_util.dart';
@@ -312,39 +312,32 @@ class UpdateResult {
 }
 
 FutureEffect fetchVideoInfoEffect(String videoUrl) =>
-    FutureEffect(() => getVideoInfo(videoUrl).then(VideoInfoFetched.new));
+    FutureEffect(() => yt.getVideoInfo(videoUrl).then(VideoInfoFetched.new));
 
 StreamEffect downloadVideoEffect(
   String videoTitle,
   String url,
   String taskId,
-) => StreamEffect(() {
-  final streamController = StreamController<ViewEvent>();
+) => StreamEffect(() async* {
+  final baseName = sanitizeFileName(videoTitle);
+  final saveFolderPath = await SettingsService().getSaveFolderPath();
+  final events = yt.downloadVideo(
+    url,
+    folder: saveFolderPath,
+    baseName: baseName,
+  );
 
-  void doTask() async {
-    final baseName = sanitizeFileName(videoTitle);
-    final saveFolderPath = await SettingsService().getSaveFolderPath();
-    final videoResult = await downloadVideo(
-      url,
-      folder: saveFolderPath,
-      baseName: baseName,
-      onProgress: (p) {
-        streamController.add(DownloadProgressUpdated(p));
-      },
-    );
-
-    switch (videoResult) {
-      case DownloadSuccess(:final file):
-        streamController.add(DownloadCompleted(fileName: file.path));
-      case DownloadFailure(message: final message):
-        streamController.add(DownloadFailed(message));
-    }
-
-    streamController.close();
-  }
-
-  streamController.onListen = doTask;
-  return streamController.stream;
+  yield* events.map(
+    (event) => switch (event) {
+      yt.DownloadSuccess(:final fileName) => DownloadCompleted(
+        fileName: fileName,
+      ),
+      yt.DownloadFailure(:final message) => DownloadFailed(message),
+      yt.DownloadProgressUpdated(:final progress) => DownloadProgressUpdated(
+        progress,
+      ),
+    },
+  );
 }, taskId: taskId);
 
 //--- Reducer ---

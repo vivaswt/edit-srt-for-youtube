@@ -41,39 +41,39 @@ class _DownloadScreenState extends State<DownloadScreen> {
     });
 
     final baseName = sanitizeFileName(videoTitle);
-
     await handleDownloadingVideo(baseName);
 
     final saveFolderPath = await SettingsService().getSaveFolderPath();
+    String subtitleFileName = '';
 
-    final subtitleResult = await getSubTitleContents(
+    await for (final event in downloadSubTitle(
       url,
       format: 'srv2',
       folder: saveFolderPath,
       baseName: 'subtitles',
-      onProgress: handleProgress,
-    );
+    )) {
+      switch (event) {
+        case DownloadProgressUpdated(:final progress):
+          handleProgress(progress);
 
-    String subtitleFileName = '';
-
-    switch (subtitleResult) {
-      case DownloadSuccess(file: final file):
-        subtitleFileName = file.path;
-        final srtFile = await createSrtFile(
-          subtitleFileName: file.path,
-          baseName: baseName,
-        );
-        setState(() {
-          progress = 0;
-          srtFileName = srtFile.path;
-        });
-      case DownloadFailure(message: final message):
-        setState(() {
-          progress = 0;
-          state = DownloadState.done;
-          errorMessage = message;
-        });
-        return;
+        case DownloadSuccess(:final fileName):
+          subtitleFileName = fileName;
+          final srtFile = await createSrtFile(
+            subtitleFileName: subtitleFileName,
+            baseName: baseName,
+          );
+          setState(() {
+            progress = 0;
+            srtFileName = srtFile.path;
+          });
+        case DownloadFailure(message: final message):
+          setState(() {
+            progress = 0;
+            state = DownloadState.done;
+            errorMessage = message;
+          });
+          return;
+      }
     }
 
     final segmentFile = await createSentenceSegmentFile(
@@ -91,26 +91,26 @@ class _DownloadScreenState extends State<DownloadScreen> {
     if (skipDownloadingVideo) return;
     final saveFolderPath = await SettingsService().getSaveFolderPath();
 
-    final videoResult = await downloadVideo(
+    await for (final event in downloadVideo(
       url,
       folder: saveFolderPath,
       baseName: baseName,
-      onProgress: handleProgress,
-    );
-
-    switch (videoResult) {
-      case DownloadSuccess(file: final file):
-        setState(() {
-          progress = 0;
-          videoFileName = file.path;
-        });
-      case DownloadFailure(message: final message):
-        setState(() {
-          progress = 0;
-          state = DownloadState.done;
-          errorMessage = message;
-        });
-        return;
+    )) {
+      switch (event) {
+        case DownloadProgressUpdated(:final progress):
+          handleProgress(progress);
+        case DownloadSuccess(:final fileName):
+          setState(() {
+            progress = 0;
+            videoFileName = fileName;
+          });
+        case DownloadFailure(:final message):
+          setState(() {
+            progress = 0;
+            state = DownloadState.done;
+            errorMessage = message;
+          });
+      }
     }
   }
 
