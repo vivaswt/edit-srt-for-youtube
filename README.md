@@ -39,3 +39,34 @@ The application is divided into three main modules:
 3. **Set up Gemini API Key.**
    - This application uses the Google Gemini API for the translation feature.
    - You must set an environment variable named `GEMINI_API_KEY` with your valid API key for the translation feature to work.
+
+## Info for Dev
+```mermaid
+flowchart TD
+    %% Data Stores / Files
+    SRV2@{ shape: datastore, label: "SRV² File" }
+    SSG@{ shape: datastore, label: "SSG File" }
+    ListWord@{ shape: datastore, label: "Words" }
+    ListSeg@{ shape: datastore, label: "SentenceSegments" }
+    ListRec@{ shape: datastore, label: "SRTRecords" }
+    SRT@{ shape: datastore, label: "SRT File" }
+
+    %% Processes
+    A(("A"))
+    B(("B"))
+    C(("C"))
+    D(("D"))
+    E(("E"))
+
+    %% Flow Connections
+    SRV2 --> A
+    A --> ListWord
+    ListWord --> B
+    B --> ListSeg
+    ListSeg --> C
+    C --> SSG
+    ListSeg --> D
+    D --> ListRec
+    ListRec --> E
+    E --> SRT
+```
