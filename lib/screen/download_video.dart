@@ -1,6 +1,5 @@
-import 'dart:async';
-
 import 'package:edit_srt_for_youtube/api/youtube.dart' as yt;
+import 'package:edit_srt_for_youtube/core/view_controller.dart';
 import 'package:edit_srt_for_youtube/fp/either.dart';
 import 'package:edit_srt_for_youtube/model/setting_service.dart';
 import 'package:edit_srt_for_youtube/others/io_util.dart';
@@ -17,7 +16,7 @@ class DownloadVideoScreen extends StatefulWidget {
 class _DownloadVideoScreenState extends State<DownloadVideoScreen> {
   static const String downloadTaskId = 'download_video';
 
-  final _controller = ViewController(
+  final _controller = ViewController<Model, ViewEvent>(
     initialModel: Model(
       phase: ViewPhase.waitingUrlInputed,
       videoUrl: '',
@@ -213,7 +212,6 @@ enum ViewPhase {
   fetchingVideoInfo,
   readyToDownload,
   downloading,
-  // TODO: Add Download Complete Phase and etc.
   errorOnFetchInfo,
 }
 
@@ -278,43 +276,10 @@ class CancelDownload extends ViewEvent {
 }
 
 //--- Effect ---
-typedef Thunk<V> = V Function();
-
-sealed class Effect {}
-
-class NoEffect extends Effect {}
-
-class FutureEffect extends Effect {
-  final Thunk<Future<ViewEvent>> thunk;
-
-  FutureEffect(this.thunk);
-}
-
-class StreamEffect extends Effect {
-  final String taskId;
-  final Thunk<Stream<ViewEvent>> thunk;
-
-  StreamEffect(this.thunk, {required this.taskId});
-}
-
-class CancelEffect extends Effect {
-  final String taskId;
-
-  CancelEffect({required this.taskId});
-}
-
-//-- Update ---
-class UpdateResult {
-  final Model model;
-  final Effect? effect;
-
-  UpdateResult(this.model, [this.effect]);
-}
-
-FutureEffect fetchVideoInfoEffect(String videoUrl) =>
+FutureEffect<ViewEvent> fetchVideoInfoEffect(String videoUrl) =>
     FutureEffect(() => yt.getVideoInfo(videoUrl).then(VideoInfoFetched.new));
 
-StreamEffect downloadVideoEffect(
+StreamEffect<ViewEvent> downloadVideoEffect(
   String videoTitle,
   String url,
   String taskId,
@@ -341,9 +306,7 @@ StreamEffect downloadVideoEffect(
 }, taskId: taskId);
 
 //--- Reducer ---
-typedef Reducer = UpdateResult Function(Model, ViewEvent);
-
-Reducer update = (model, event) {
+Reducer<Model, ViewEvent> update = (model, event) {
   switch ((model.phase, event)) {
     case (
       ViewPhase.waitingUrlInputed ||
@@ -428,48 +391,3 @@ Reducer update = (model, event) {
       );
   }
 };
-
-// --- Controller ---
-class ViewController {
-  final ValueNotifier<Model> modelNotifier;
-  final Reducer reducer;
-  final Map<String, StreamSubscription> _subscriptions = {};
-  ViewController({required Model initialModel, required this.reducer})
-    : modelNotifier = ValueNotifier<Model>(initialModel);
-
-  Future<void> dispatch(ViewEvent event) async {
-    final result = reducer(modelNotifier.value, event);
-    modelNotifier.value = result.model;
-
-    _handleEffect(result.effect);
-  }
-
-  Future<void> _handleEffect(Effect? effect) async {
-    switch (effect) {
-      case FutureEffect(:final thunk):
-        thunk().then(dispatch);
-
-      case StreamEffect(:final thunk, taskId: final taskId):
-        final stream = thunk();
-        _subscriptions[taskId]?.cancel();
-        _subscriptions[taskId] = stream.listen(
-          dispatch,
-          onDone: () => _subscriptions.remove(taskId),
-        );
-
-      case CancelEffect(:final taskId):
-        _subscriptions[taskId]?.cancel();
-        _subscriptions.remove(taskId);
-
-      case NoEffect():
-      case null:
-      // NOP
-    }
-  }
-
-  Future<void> dispose() async {
-    await Future.wait(_subscriptions.values.map((s) => s.cancel()));
-    _subscriptions.clear();
-    modelNotifier.dispose();
-  }
-}
