@@ -1,8 +1,11 @@
 import 'dart:io';
 
+import 'package:edit_srt_for_youtube/converter/ssg_srt.dart';
 import 'package:edit_srt_for_youtube/extension/fp_list.dart';
 import 'package:edit_srt_for_youtube/extension/object.dart';
 import 'package:edit_srt_for_youtube/extension/widget_wrap.dart';
+import 'package:edit_srt_for_youtube/io/sentence_segment_io.dart';
+import 'package:edit_srt_for_youtube/io/srt_io.dart';
 import 'package:edit_srt_for_youtube/model/sentence_segment.dart';
 import 'package:edit_srt_for_youtube/model/srt.dart';
 import 'package:edit_srt_for_youtube/model/word.dart' as wd;
@@ -151,13 +154,11 @@ class _EditFirstScreenState extends State<EditFirstScreen> {
       errorMesage = '';
     });
 
-    final contents = sentenceSegments
-        .pipe(segmentsToSrtRecords)
-        .pipe(srtRecordsToStrings)
-        .join('\n');
-
     try {
-      await File(_srtFileName(fileName!)).writeAsString(contents);
+      await saveSrtRecords(
+        segmentsToSrtRecords(sentenceSegments),
+        _srtFileName(fileName!),
+      );
       setState(() {
         isExporting = false;
       });
@@ -240,23 +241,6 @@ class StateMachine {
         state = InitalState();
     }
   }
-}
-
-Future<Either<String, List<SentenceSegment>>> loadSentenceSegments(
-  String srtFileName,
-) async {
-  final srtParseResult = await File(srtFileName).readAsString().then(parseSrt);
-  final wordsInfoFileName = _getWordInfoFilePath(srtFileName);
-  if (!File(wordsInfoFileName).existsSync()) {
-    return Left('The words info file is not found.');
-  }
-
-  final wordsInfo = await wd.loadFromJson(wordsInfoFileName);
-  final result = srtParseResult.bind(
-    (srtRecords) => srtRecordsToSegments(srtRecords, wordsInfo),
-  );
-
-  return result;
 }
 
 String _getWordInfoFilePath(String srtFileName) {

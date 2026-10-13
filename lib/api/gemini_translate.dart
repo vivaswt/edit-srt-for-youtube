@@ -33,7 +33,7 @@ Future<String> requestForTranslation(
       {
         "parts": [
           {
-            "text": srtRecordsToStrings(
+            "text": _srtRecordsToStrings(
               srts.toList(),
             ).pipe((ls) => ls.join('\n')),
           },
@@ -56,6 +56,9 @@ Future<String> requestForTranslation(
     );
   }
 }
+
+List<String> _srtRecordsToStrings(List<SrtRecord> records) =>
+    records.expand((r) => r.toTexts()).toList();
 
 String extractGeminiResponse(String responseBody) {
   final json = jsonDecode(responseBody);

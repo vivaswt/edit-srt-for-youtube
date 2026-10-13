@@ -6,6 +6,7 @@ import 'package:edit_srt_for_youtube/api/gemini_translate_split.dart' as gemini;
 import 'package:edit_srt_for_youtube/extension/fp_iterable.dart';
 import 'package:edit_srt_for_youtube/extension/widget_wrap.dart';
 import 'package:edit_srt_for_youtube/fp/task_either.dart';
+import 'package:edit_srt_for_youtube/io/srt_io.dart';
 import 'package:edit_srt_for_youtube/model/srt.dart';
 import 'package:edit_srt_for_youtube/fp/either.dart';
 import 'package:edit_srt_for_youtube/others/srt_parser.dart';
@@ -93,18 +94,16 @@ class _TranslateScreenState extends State<TranslateScreen> {
         ),
       });
 
-      final outputString = srtRecordsToStrings(srtLinesJp.toList());
+      final outputFilePath = _srtJpFileName(_fileName.value!);
 
-      final outFile = await $(
+      await $(
         TaskEither.tryCatch(
-          () => File(
-            _srtJpFileName(_fileName.value!),
-          ).writeAsString(outputString.join('\n')),
+          () => saveSrtRecords(srtLinesJp.toList(), outputFilePath),
           (_) => Exception('Fail to write the file.'),
         ),
       );
 
-      return outFile;
+      return File(outputFilePath);
     });
 
     switch (await translateTask.run()) {

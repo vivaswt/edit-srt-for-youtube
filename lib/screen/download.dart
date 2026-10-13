@@ -4,11 +4,12 @@ import 'package:edit_srt_for_youtube/extension/object.dart';
 import 'package:edit_srt_for_youtube/api/youtube.dart';
 import 'package:edit_srt_for_youtube/extension/widget_wrap.dart';
 import 'package:edit_srt_for_youtube/model/sentence_segment.dart' as ssg;
-import 'package:edit_srt_for_youtube/model/setting_service.dart';
+import 'package:edit_srt_for_youtube/service/setting_service.dart';
 import 'package:edit_srt_for_youtube/model/srt.dart';
-import 'package:edit_srt_for_youtube/model/srv2_parser.dart';
+import 'package:edit_srt_for_youtube/io/srv2_parser.dart';
 import 'package:edit_srt_for_youtube/model/word.dart';
 import 'package:edit_srt_for_youtube/others/io_util.dart';
+import 'package:edit_srt_for_youtube/service/subtitle.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
@@ -118,51 +119,16 @@ class _DownloadScreenState extends State<DownloadScreen> {
     String subtitleFileName,
     String baseName,
   ) async {
-    List<ssg.SentenceSegment> splitLongSentence(segment) =>
-        ssg.splitLongSegment(segment, minTotalWords: 15, minPartWords: 5);
-
-    final contents = await File(subtitleFileName).readAsString();
-    final segments = contents
-        .pipe(parseSrv2)
-        .pipe(ssg.splitBySentence)
-        .expand(splitLongSentence)
-        .toList();
-
     final fileName = p.join(p.dirname(subtitleFileName), '$baseName.ssg');
-
-    return ssg.saveAsJson(segments, fileName).then((_) => File(fileName));
-  }
-
-  Future<File> createWordsFile(String subtitleFileName, String baseName) async {
-    final words = await File(subtitleFileName).readAsString().then(parseSrv2);
-    final filePath = p.join(
-      p.dirname(subtitleFileName),
-      '${baseName}_words.json',
-    );
-
-    return saveAsJson(words, filePath).then((_) => File(filePath));
+    return createSentenceSegmentFileFromSrv2(subtitleFileName, fileName);
   }
 
   Future<File> createSrtFile({
     required String subtitleFileName,
     required String baseName,
   }) async {
-    List<ssg.SentenceSegment> splitLongSentence(segment) =>
-        ssg.splitLongSegment(segment, minTotalWords: 15, minPartWords: 5);
-
-    final contents = await File(subtitleFileName).readAsString();
-    final srtLines = contents
-        .pipe(parseSrv2)
-        .pipe(ssg.splitBySentence)
-        .expand(splitLongSentence)
-        .toList()
-        .pipe(segmentsToSrtRecords)
-        .pipe(srtRecordsToStrings);
-
     final fileName = p.join(p.dirname(subtitleFileName), '$baseName.srt');
-    final file = File(fileName);
-    await file.writeAsString(srtLines.join('\n'));
-    return file;
+    return createSrtRecordFileFromSrv2(subtitleFileName, fileName);
   }
 
   void handleProgress(double percentage) {

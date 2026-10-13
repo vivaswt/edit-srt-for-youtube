@@ -1,5 +1,5 @@
 import 'package:edit_srt_for_youtube/extension/widget_wrap.dart';
-import 'package:edit_srt_for_youtube/model/setting_service.dart';
+import 'package:edit_srt_for_youtube/service/setting_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 

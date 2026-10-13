@@ -1,7 +1,7 @@
 import 'package:edit_srt_for_youtube/api/youtube.dart' as yt;
 import 'package:edit_srt_for_youtube/core/view_controller.dart';
 import 'package:edit_srt_for_youtube/fp/either.dart';
-import 'package:edit_srt_for_youtube/model/setting_service.dart';
+import 'package:edit_srt_for_youtube/service/setting_service.dart';
 import 'package:edit_srt_for_youtube/others/io_util.dart';
 import 'package:flutter/material.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';

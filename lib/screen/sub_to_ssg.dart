@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:edit_srt_for_youtube/core/view_controller.dart';
 import 'package:edit_srt_for_youtube/fp/either.dart';
-import 'package:edit_srt_for_youtube/model/setting_service.dart';
+import 'package:edit_srt_for_youtube/service/setting_service.dart';
+import 'package:edit_srt_for_youtube/io/srv2_parser.dart';
+import 'package:edit_srt_for_youtube/service/subtitle.dart';
 import 'package:file_picker/file_picker.dart' show FilePicker, FileType;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
@@ -185,6 +189,7 @@ Future<ConversionCompleted> convertSubToSsg(String subtitleFilePath) async {
     saveFolderPath,
     '${p.basenameWithoutExtension(subtitleFilePath)}.ssg',
   );
+  await createSentenceSegmentFileFromSrv2(subtitleFilePath, ssgFilePath);
   return ConversionCompleted(Right(ssgFilePath));
 }
 
